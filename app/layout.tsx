@@ -7,6 +7,13 @@ export const metadata: Metadata = {
     "Retro game launch pages reimagined for today. A portfolio by BasicHiro.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: "#030308",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

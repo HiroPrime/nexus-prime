@@ -26,9 +26,14 @@ export function Logo({ showTagline = true, onClick }: LogoProps) {
       </div>
 
       {showTagline && (
-        <p className="font-pixel text-[clamp(0.42rem,0.8vw,0.55rem)] tracking-[0.1em] text-[#fe9dfe] mt-[0.25rem] text-left">
-          Development Portfolio
-        </p>
+        <>
+          <p className="hidden lg:block font-pixel text-[clamp(0.42rem,0.8vw,0.55rem)] tracking-[0.1em] text-[#fe9dfe] mt-[0.25rem] text-left">
+            Development Portfolio
+          </p>
+          <p className="lg:hidden type-body text-[clamp(1rem,3.2vw,1.25rem)] tracking-[0.06em] text-[#fe9dfe] mt-[0.15rem] text-left leading-[1.35]">
+            Development Portfolio
+          </p>
+        </>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
+import { createClient } from "@/lib/supabase/server";
 
 export type VoteChoice = "criticism" | "compliments";
 
@@ -14,6 +15,13 @@ const DATA_PATH = path.join(process.cwd(), "data", "votes.json");
 function hashValue(value: string): string {
   const salt = process.env.VOTE_HASH_SALT ?? "nexus-prime-vote-salt";
   return createHash("sha256").update(`${salt}:${value}`).digest("hex");
+}
+
+function supabaseConfigured(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 }
 
 let cachedStore: VoteStore | null = null;
@@ -45,6 +53,82 @@ async function writeStore(store: VoteStore): Promise<void> {
   const tempPath = `${DATA_PATH}.tmp`;
   await fs.writeFile(tempPath, JSON.stringify(store, null, 2), "utf-8");
   await fs.rename(tempPath, DATA_PATH);
+}
+
+type PortfolioVoteRow = {
+  voter_key: string;
+  choice: VoteChoice;
+};
+
+async function getSupabaseVoteState(voterKey: string) {
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("portfolio_votes")
+    .select("voter_key, choice")
+    .returns<PortfolioVoteRow[]>();
+
+  if (error) throw error;
+
+  const counts: Record<VoteChoice, number> = {
+    criticism: 0,
+    compliments: 0,
+  };
+
+  for (const row of rows ?? []) {
+    const choice = row.choice;
+    if (choice === "criticism" || choice === "compliments") {
+      counts[choice] += 1;
+    }
+  }
+
+  const userRow = rows?.find((row) => row.voter_key === voterKey);
+  const userVote =
+    userRow?.choice === "criticism" || userRow?.choice === "compliments"
+      ? userRow.choice
+      : null;
+
+  return {
+    counts,
+    userVote,
+    hasVoted: userVote !== null,
+  };
+}
+
+async function castSupabaseVote(voterKey: string, choice: VoteChoice) {
+  const supabase = await createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("portfolio_votes")
+    .select("choice")
+    .eq("voter_key", voterKey)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (existing?.choice === choice) {
+    return getSupabaseVoteState(voterKey).then((state) => ({
+      ok: true as const,
+      counts: state.counts,
+      userVote: choice,
+    }));
+  }
+
+  const { error: upsertError } = await supabase.from("portfolio_votes").upsert(
+    {
+      voter_key: voterKey,
+      choice,
+    },
+    { onConflict: "voter_key" }
+  );
+
+  if (upsertError) throw upsertError;
+
+  const state = await getSupabaseVoteState(voterKey);
+  return {
+    ok: true as const,
+    counts: state.counts,
+    userVote: choice,
+  };
 }
 
 export function getClientIp(headers: Headers): string {
@@ -82,6 +166,10 @@ export function getVoterIdentity(headers: Headers): {
 }
 
 export async function getVoteState(voterKey: string) {
+  if (supabaseConfigured()) {
+    return getSupabaseVoteState(voterKey);
+  }
+
   const store = await readStore();
   const userVote = store.voters[voterKey] ?? null;
 
@@ -93,6 +181,10 @@ export async function getVoteState(voterKey: string) {
 }
 
 export async function castVote(voterKey: string, choice: VoteChoice) {
+  if (supabaseConfigured()) {
+    return castSupabaseVote(voterKey, choice);
+  }
+
   const store = await readStore();
   const previous = store.voters[voterKey];
 

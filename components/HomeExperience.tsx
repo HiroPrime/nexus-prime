@@ -5,6 +5,7 @@ import { IntroMenu } from "@/components/IntroMenu";
 import { IntroSlide, type IntroView } from "@/components/IntroSlide";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Logo } from "@/components/Logo";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SocialMedia } from "@/components/SocialMedia";
 
 type Slide = "intro" | "loading" | "game";
@@ -27,34 +28,41 @@ export function HomeExperience() {
   }
 
   const bgClass = slide === "intro" ? "bg-intro" : "bg-inner";
+  const isGame = slide === "game";
 
   return (
     /* h-screen + overflow-hidden locks the layout to exactly one viewport — no scroll */
-    <div className={`h-screen overflow-hidden flex flex-col relative bg-[#030308] ${bgClass}`}>
+    <div className={`h-[100dvh] overflow-hidden flex flex-col relative bg-[#030308] ${bgClass}`}>
 
       {/* ── Header ── */}
-      <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-7 pt-3 pb-2 relative z-10">
+      <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-7 pt-3 pb-2 relative z-10 max-lg:grid-cols-[1fr_auto] max-lg:px-4 max-lg:pt-2 max-lg:pb-1.5">
         <Logo
           showTagline
           onClick={slide !== "intro" ? () => setSlide("intro") : undefined}
         />
 
-        <nav className="flex justify-center items-center" aria-label="Section menu">
-          {slide === "game" && (
+        {/* Desktop nav — unchanged at lg+ */}
+        <nav
+          className="hidden lg:flex justify-center items-center"
+          aria-label="Section menu"
+        >
+          {isGame && (
             <IntroMenu activeView={introView} onSelect={setIntroView} />
           )}
         </nav>
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end max-lg:col-start-2">
           <SocialMedia />
         </div>
       </header>
 
-      {/* Less vertical padding on intro — hero text needs the room */}
       <main
         className={[
           "flex-1 flex flex-col min-h-0 relative z-[5] px-[4vw]",
-          slide === "intro" ? "pt-[1rem] pb-[1rem]" : "pt-[5rem] pb-[5rem]",
+          slide === "intro" ? "pt-[1rem] pb-[1rem]" : "pt-[clamp(1rem,3vh,2.5rem)] pb-[0.75rem]",
+          slide === "intro"
+            ? "max-lg:px-4 max-lg:pt-3 max-lg:pb-3"
+            : "max-lg:px-3 max-lg:pt-2 max-lg:pb-2",
         ].join(" ")}
       >
 
@@ -77,12 +85,19 @@ export function HomeExperience() {
 
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="footer-rule shrink-0 flex flex-col items-center justify-center gap-[0.6rem] px-6 pt-[0.85rem] pb-[1rem] relative z-10">
-        <p className="font-logo font-bold text-[clamp(0.75rem,1.4vw,1rem)] tracking-[0.1em] text-white uppercase">
-          &copy; &#123;NEXUS | PRIME&#125; {new Date().getFullYear()}
-        </p>
-      </footer>
+      {/* ── Mobile / tablet tab bar — lifted above footer ── */}
+      {isGame && (
+        <div className="lg:hidden shrink-0 z-20 mb-1">
+          <IntroMenu
+            variant="tabbar"
+            activeView={introView}
+            onSelect={setIntroView}
+          />
+        </div>
+      )}
+
+      {/* ── Footer — viewport bottom, background visible ── */}
+      {(slide === "intro" || slide === "game") && <SiteFooter />}
 
     </div>
   );

@@ -13,7 +13,7 @@ export function SocialMedia() {
           <Fragment key={social.name}>
             {index > 0 && (
               <span
-                className="font-pixel text-white text-[clamp(0.5rem,0.85vw,0.65rem)] mx-[0.3rem]"
+                className="font-pixel text-white text-[clamp(0.5rem,0.85vw,0.65rem)] max-lg:text-[clamp(0.55rem,3.2vw,0.78rem)] mx-[0.3rem]"
                 aria-hidden="true"
               >
                 |
@@ -21,7 +21,7 @@ export function SocialMedia() {
             )}
             <a
               href={social.href}
-              className="font-pixel text-[clamp(0.5rem,0.85vw,0.65rem)] tracking-[0.1em] text-white no-underline uppercase"
+              className="font-pixel text-[clamp(0.5rem,0.85vw,0.65rem)] max-lg:text-[clamp(0.55rem,3.2vw,0.78rem)] tracking-[0.1em] text-white no-underline uppercase"
               target="_blank"
               rel="noopener noreferrer"
             >

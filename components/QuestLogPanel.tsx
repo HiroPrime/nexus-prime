@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { forwardRef, Fragment, useMemo, useRef, useState } from "react";
+import { forwardRef, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PlayfulText } from "@/components/PlayfulText";
 import { useFitContainerFontSize } from "@/hooks/useFitContainerFontSize";
 import { useUniformFitFontSize } from "@/hooks/useFitTextBox";
@@ -97,42 +97,152 @@ const OBJECTIVE_BODY_CLASS =
 
 const OBJECTIVE_SECTION_CLASS = "flex flex-col gap-[0.35em] shrink-0";
 
+function QuestObjectiveDetails({ quest }: { quest: Quest }) {
+  return (
+    <>
+      <div className={OBJECTIVE_SECTION_CLASS}>
+        <p className={OBJECTIVE_LABEL_CLASS}>Objective</p>
+        <p className={OBJECTIVE_BODY_CLASS}>{quest.objective}</p>
+      </div>
+
+      {quest.companion && (
+        <div className={OBJECTIVE_SECTION_CLASS}>
+          <p className={OBJECTIVE_LABEL_CLASS}>Companion</p>
+          <div className="flex items-center gap-3">
+            <p className={OBJECTIVE_BODY_CLASS}>{quest.companion}</p>
+            {quest.companionUrl && (
+              <a
+                href={quest.companionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Click to adventure"
+                className="shrink-0 flex items-center"
+              >
+                <Image
+                  src={quest.companionIcon ?? "/pixel-icons/nav-ghost.png"}
+                  alt={quest.companion}
+                  width={1757}
+                  height={265}
+                  className="h-[1.1em] w-auto"
+                  style={{
+                    imageRendering: "pixelated",
+                    height: "1.1em",
+                    width: "auto",
+                  }}
+                  unoptimized
+                />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className={OBJECTIVE_SECTION_CLASS}>
+        <p className={OBJECTIVE_LABEL_CLASS}>Status</p>
+        <p className={OBJECTIVE_BODY_CLASS}>
+          <span className={`type-subtitle text-[1.05em] ${STATUS_COLOR[quest.category]}`}>
+            {quest.statusLabel}
+          </span>
+          {" "}— {quest.statusDetail}
+        </p>
+      </div>
+
+      {quest.reward && (
+        <div className={OBJECTIVE_SECTION_CLASS}>
+          <p className={OBJECTIVE_LABEL_CLASS}>Reward Gained</p>
+          <p className="type-body text-[0.82em] text-[#ffd700] leading-[1.35]">
+            {quest.reward}
+          </p>
+        </div>
+      )}
+
+      {quest.exploreUrl && (
+        <a
+          href={quest.exploreUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={EXPLORE_BUTTON_CLASS}
+        >
+          Explore the Quest
+        </a>
+      )}
+    </>
+  );
+}
+
 const QuestItemButton = forwardRef<
   HTMLButtonElement,
   {
     name: string;
     fontSize: number;
     isSelected: boolean;
+    isExpanded?: boolean;
+    variant?: "list" | "accordion";
     onSelect: () => void;
   }
->(function QuestItemButton({ name, fontSize, isSelected, onSelect }, ref) {
+>(function QuestItemButton(
+  { name, fontSize, isSelected, isExpanded, variant = "list", onSelect },
+  ref
+) {
+  const isAccordion = variant === "accordion";
+
   return (
     <button
       ref={ref}
       type="button"
       className={[
-        "flex-[1_1_0] min-h-0 flex items-center w-full text-left",
-        "px-4 py-2 border-2 border-black transition-colors overflow-hidden",
+        isAccordion
+          ? "shrink-0 flex items-center w-full text-left px-4 py-2.5"
+          : "flex-[1_1_0] min-h-0 flex items-center w-full text-left px-4 py-2",
+        "border-2 border-black transition-colors overflow-hidden",
         isSelected
           ? "bg-[rgba(139,48,211,1)] text-[#20ff00]"
           : "bg-[rgba(139,48,211,0.25)] text-[#20ff00] hover:bg-[rgba(139,48,211,0.4)]",
+        isAccordion && isExpanded ? "border-b-0" : "",
       ].join(" ")}
       onClick={onSelect}
       aria-pressed={isSelected}
+      aria-expanded={isAccordion ? isExpanded : undefined}
     >
       <span
-        className="type-body block w-full leading-none whitespace-nowrap"
+        className="type-body block flex-1 min-w-0 leading-none whitespace-nowrap"
         style={{ fontSize: `${fontSize}px` }}
       >
         {name}
       </span>
+      {isAccordion && (
+        <span
+          className={[
+            "shrink-0 ml-2 font-pixel text-[0.38rem] text-white/80 transition-transform duration-200",
+            isExpanded ? "rotate-90" : "",
+          ].join(" ")}
+          aria-hidden
+        >
+          ▶
+        </span>
+      )}
     </button>
   );
 });
 
 export function QuestLogPanel() {
   const [selectedId, setSelectedId] = useState<string>(QUESTS[0].id);
+  const [expandedId, setExpandedId] = useState<string | null>(QUESTS[0].id);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 1024px)").matches
+      : true
+  );
+
   const selected = QUESTS.find((q) => q.id === selectedId)!;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const sampleBoxRef = useRef<HTMLButtonElement>(null);
   const longestQuestName = useMemo(
@@ -150,142 +260,119 @@ export function QuestLogPanel() {
     deps: [selectedId],
   });
 
+  function toggleQuest(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
   return (
     <div className="flex flex-row w-full flex-1 min-h-0 bg-[rgba(139,48,211,0.82)] border-2 border-black overflow-hidden">
 
-      {/* ── LEFT: Quest list ── */}
-      <div className="col-divider flex-[0_0_42%] flex flex-col min-h-0 min-w-0 overflow-hidden px-5 pb-5">
+      {isDesktop ? (
+        <>
+        <div className="col-divider flex-[0_0_42%] flex flex-col min-h-0 min-w-0 overflow-hidden px-5 pb-5">
+          <h2 className="type-heading text-[clamp(2.4rem,5vw,3.8rem)] text-white pt-5 pb-3 shrink-0">
+            <PlayfulText>Quest Log</PlayfulText>
+          </h2>
+
+          <div className="relative flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+            {CATEGORIES.map(({ key, label }) => {
+              const group = QUESTS.filter((q) => q.category === key);
+              if (group.length === 0) return null;
+              return (
+                <Fragment key={key}>
+                  <p className="type-subtitle text-[clamp(0.9rem,1.6vw,1.3rem)] max-lg:text-[clamp(1.05rem,3.2vw,1.35rem)] text-[#fe9dfe] uppercase shrink-0 leading-none">
+                    {label}
+                  </p>
+
+                  {group.map((quest) => (
+                    <QuestItemButton
+                      key={quest.id}
+                      ref={quest.id === QUESTS[0].id ? sampleBoxRef : undefined}
+                      name={quest.name}
+                      fontSize={fontSize}
+                      isSelected={quest.id === selectedId}
+                      onSelect={() => setSelectedId(quest.id)}
+                    />
+                  ))}
+                </Fragment>
+              );
+            })}
+
+            <span
+              ref={measureRef}
+              className="type-body invisible absolute pointer-events-none whitespace-nowrap leading-none"
+              aria-hidden
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden px-5 pb-5">
+          <h2 className="type-heading text-[clamp(2.4rem,5vw,3.8rem)] text-white pt-5 pb-3 shrink-0">
+            <PlayfulText>Objective</PlayfulText>
+          </h2>
+
+          {selected && (
+            <div className="flex-1 min-h-0 overflow-hidden bg-[rgba(139,48,211,1)] border-2 border-black p-5">
+              <div
+                ref={objectiveRef}
+                className="h-full min-h-0 flex flex-col gap-[1.35em] overflow-y-auto break-words"
+              >
+                <QuestObjectiveDetails quest={selected} />
+              </div>
+            </div>
+          )}
+        </div>
+        </>
+      ) : (
+        <div className="flex flex-col w-full flex-1 min-h-0 overflow-hidden px-4 pb-4">
         <h2 className="type-heading text-[clamp(2.4rem,5vw,3.8rem)] text-white pt-5 pb-3 shrink-0">
           <PlayfulText>Quest Log</PlayfulText>
         </h2>
 
-        <div className="relative flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+        <div className="relative flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto">
           {CATEGORIES.map(({ key, label }) => {
             const group = QUESTS.filter((q) => q.category === key);
             if (group.length === 0) return null;
             return (
               <Fragment key={key}>
-                <p className="type-subtitle text-[clamp(0.9rem,1.6vw,1.3rem)] text-[#fe9dfe] uppercase shrink-0 leading-none">
+                <p className="type-subtitle text-[clamp(0.9rem,1.6vw,1.3rem)] max-lg:text-[clamp(1.05rem,3.2vw,1.35rem)] text-[#fe9dfe] uppercase shrink-0 leading-none">
                   {label}
                 </p>
 
-                {group.map((quest) => (
-                  <QuestItemButton
-                    key={quest.id}
-                    ref={quest.id === QUESTS[0].id ? sampleBoxRef : undefined}
-                    name={quest.name}
-                    fontSize={fontSize}
-                    isSelected={quest.id === selectedId}
-                    onSelect={() => setSelectedId(quest.id)}
-                  />
-                ))}
+                {group.map((quest) => {
+                  const isExpanded = quest.id === expandedId;
+                  return (
+                    <div key={quest.id} className="shrink-0 flex flex-col">
+                      <QuestItemButton
+                        ref={quest.id === QUESTS[0].id ? sampleBoxRef : undefined}
+                        name={quest.name}
+                        fontSize={fontSize}
+                        isSelected={isExpanded}
+                        isExpanded={isExpanded}
+                        variant="accordion"
+                        onSelect={() => toggleQuest(quest.id)}
+                      />
+
+                      {isExpanded && (
+                        <div className="border-2 border-black border-t-0 bg-[rgba(139,48,211,1)] px-4 py-4 flex flex-col gap-[1.35em] break-words">
+                          <QuestObjectiveDetails quest={quest} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </Fragment>
             );
           })}
 
-          {/* Hidden measurer — sized against longest quest name */}
           <span
             ref={measureRef}
             className="type-body invisible absolute pointer-events-none whitespace-nowrap leading-none"
             aria-hidden
           />
         </div>
-      </div>
-
-      {/* ── RIGHT: Objective detail ── */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden px-5 pb-5">
-        <h2 className="type-heading text-[clamp(2.4rem,5vw,3.8rem)] text-white pt-5 pb-3 shrink-0">
-          <PlayfulText>Objective</PlayfulText>
-        </h2>
-
-        {selected && (
-          <div className="flex-1 min-h-0 overflow-hidden bg-[rgba(139,48,211,1)] border-2 border-black p-5">
-            <div
-              ref={objectiveRef}
-              className="h-full min-h-0 flex flex-col gap-[1.35em] overflow-y-auto break-words"
-            >
-              <div className={OBJECTIVE_SECTION_CLASS}>
-                <p className={OBJECTIVE_LABEL_CLASS}>
-                  Objective
-                </p>
-                <p className={OBJECTIVE_BODY_CLASS}>
-                  {selected.objective}
-                </p>
-              </div>
-
-              {selected.companion && (
-                <div className={OBJECTIVE_SECTION_CLASS}>
-                  <p className={OBJECTIVE_LABEL_CLASS}>
-                    Companion
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <p className={OBJECTIVE_BODY_CLASS}>
-                      {selected.companion}
-                    </p>
-                    {selected.companionUrl && (
-                      <a
-                        href={selected.companionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Click to adventure"
-                        className="shrink-0 flex items-center"
-                      >
-                        <Image
-                          src={selected.companionIcon ?? "/pixel-icons/nav-ghost.png"}
-                          alt={selected.companion}
-                          width={1757}
-                          height={265}
-                          className="h-[1.1em] w-auto"
-                          style={{
-                            imageRendering: "pixelated",
-                            height: "1.1em",
-                            width: "auto",
-                          }}
-                          unoptimized
-                        />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className={OBJECTIVE_SECTION_CLASS}>
-                <p className={OBJECTIVE_LABEL_CLASS}>
-                  Status
-                </p>
-                <p className={OBJECTIVE_BODY_CLASS}>
-                  <span className={`type-subtitle text-[1.05em] ${STATUS_COLOR[selected.category]}`}>
-                    {selected.statusLabel}
-                  </span>
-                  {" "}— {selected.statusDetail}
-                </p>
-              </div>
-
-              {selected.reward && (
-                <div className={OBJECTIVE_SECTION_CLASS}>
-                  <p className={OBJECTIVE_LABEL_CLASS}>
-                    Reward Gained
-                  </p>
-                  <p className="type-body text-[0.82em] text-[#ffd700] leading-[1.35]">
-                    {selected.reward}
-                  </p>
-                </div>
-              )}
-
-              {selected.exploreUrl && (
-                <a
-                  href={selected.exploreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={EXPLORE_BUTTON_CLASS}
-                >
-                  Explore the Quest
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
     </div>
   );
