@@ -18,8 +18,11 @@ export async function getPublicStats(): Promise<PublicStats> {
   const fallback: PublicStats = { population: 0, metric: METRIC_LABEL };
 
   try {
-    const supabase = createServiceClient();
-    if (!supabase) return fallback;
+    let supabase = createServiceClient();
+    if (!supabase) {
+      const { createClient } = await import("@/lib/supabase/server");
+      supabase = await createClient();
+    }
 
     const { data, error } = await supabase
       .from("site_metrics")
