@@ -157,14 +157,26 @@ function QuestObjectiveDetails({ quest }: { quest: Quest }) {
       )}
 
       {quest.exploreUrl && (
-        <a
-          href={quest.exploreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className={EXPLORE_BUTTON_CLASS}
+          onClick={() => {
+            void (async () => {
+              try {
+                await fetch("/api/track/quest", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ questId: quest.id }),
+                });
+              } catch {
+                // best-effort
+              }
+              window.open(quest.exploreUrl, "_blank", "noopener,noreferrer");
+            })();
+          }}
         >
           Explore the Quest
-        </a>
+        </button>
       )}
     </>
   );

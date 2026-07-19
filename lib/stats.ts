@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { SITE_ID } from "@/lib/site-ids";
 
 export const METRIC_LABEL = "Population";
 
@@ -21,7 +22,7 @@ export async function getPublicStats(): Promise<PublicStats> {
     const { data, error } = await supabase
       .from("site_metrics")
       .select("total_unique_visitors")
-      .eq("id", 1)
+      .eq("site_id", SITE_ID)
       .maybeSingle();
 
     if (error) throw error;
