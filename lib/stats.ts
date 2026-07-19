@@ -1,4 +1,4 @@
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { SITE_ID } from "@/lib/site-ids";
 
 export const METRIC_LABEL = "Population";
@@ -18,7 +18,9 @@ export async function getPublicStats(): Promise<PublicStats> {
   const fallback: PublicStats = { population: 0, metric: METRIC_LABEL };
 
   try {
-    const supabase = createServiceClient() ?? (await createClient());
+    const supabase = createServiceClient();
+    if (!supabase) return fallback;
+
     const { data, error } = await supabase
       .from("site_metrics")
       .select("total_unique_visitors")

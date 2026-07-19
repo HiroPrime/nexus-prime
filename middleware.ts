@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SITE_ID, VISITOR_COOKIE } from "@/lib/site-ids";
+import { getSupabaseUrl } from "@/lib/supabase/config";
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -28,7 +29,7 @@ export async function middleware(request: NextRequest) {
     secure: process.env.NODE_ENV === "production",
   });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = getSupabaseUrl();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (url && key) {
     void fetch(`${url}/rest/v1/rpc/record_unique_visitor`, {

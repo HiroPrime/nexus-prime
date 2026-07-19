@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 type AuthView = "landing" | "login" | "signup" | "forgot" | "update_password" | "onboarding";
 type Message = { type: "" | "error" | "info" | "success" | "success_action"; text: string };
@@ -59,6 +60,7 @@ export function NexusAuthModal({ open, onClose, user, onUserChange }: Props) {
       onUserChange(sessionUser);
       const metaUsername = sessionUser.user_metadata?.username as string | undefined;
       const supabase = createClient();
+      if (!supabase) return;
       const { data: profile } = await supabase
         .from("profiles")
         .select("username")
@@ -73,7 +75,9 @@ export function NexusAuthModal({ open, onClose, user, onUserChange }: Props) {
   );
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) return;
     const supabase = createClient();
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       void evaluateSession(session?.user ?? null);
     });
@@ -100,6 +104,11 @@ export function NexusAuthModal({ open, onClose, user, onUserChange }: Props) {
     setLoading(true);
     setMessage({ type: "", text: "" });
     const supabase = createClient();
+    if (!supabase) {
+      setMessage({ type: "error", text: "Auth is unavailable right now." });
+      setLoading(false);
+      return;
+    }
     try {
       if (provider) {
         const oauthOptions: { queryParams?: { prompt: string } } = {};
@@ -181,6 +190,11 @@ export function NexusAuthModal({ open, onClose, user, onUserChange }: Props) {
     if (!user || !username.trim()) return;
     setLoading(true);
     const supabase = createClient();
+    if (!supabase) {
+      setMessage({ type: "error", text: "Auth is unavailable right now." });
+      setLoading(false);
+      return;
+    }
     try {
       await supabase.auth.updateUser({
         data: { username: username.trim(), newsletter_opt_in: newsletter },
@@ -204,7 +218,8 @@ export function NexusAuthModal({ open, onClose, user, onUserChange }: Props) {
   };
 
   const handleLogout = async () => {
-    await createClient().auth.signOut();
+    const supabase = createClient();
+    if (supabase) await supabase.auth.signOut();
     onUserChange(null);
     onClose();
     setView("landing");

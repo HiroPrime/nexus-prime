@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export async function POST(request: Request) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
   try {
     const body = await request.json();
     const questId = typeof body?.questId === "string" ? body.questId.trim() : "";
