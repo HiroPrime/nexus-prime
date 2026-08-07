@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { IntroMenu } from "@/components/IntroMenu";
 import { IntroSlide, type IntroView } from "@/components/IntroSlide";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Logo } from "@/components/Logo";
-import { NexusAuthModal, NexusAuthTrigger } from "@/components/NexusAuthModal";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SocialMedia } from "@/components/SocialMedia";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 type Slide = "intro" | "loading" | "game";
 
@@ -17,8 +14,6 @@ export function HomeExperience() {
   const [mounted, setMounted] = useState(false);
   const [slide, setSlide] = useState<Slide>("intro");
   const [introView, setIntroView] = useState<IntroView>("character");
-  const [user, setUser] = useState<User | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -34,20 +29,10 @@ export function HomeExperience() {
 
   const bgClass = slide === "intro" ? "bg-intro" : "bg-inner";
   const isGame = slide === "game";
-  const authEnabled = isSupabaseConfigured();
 
   return (
     /* h-screen + overflow-hidden locks the layout to exactly one viewport — no scroll */
     <div className={`h-[100dvh] overflow-hidden flex flex-col relative bg-[#030308] ${bgClass}`}>
-      {authEnabled && (
-        <NexusAuthModal
-          open={authOpen}
-          onClose={() => setAuthOpen(false)}
-          user={user}
-          onUserChange={setUser}
-        />
-      )}
-
       {/* ── Header ── */}
       <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-7 pt-3 pb-2 relative z-10 max-lg:grid-cols-[1fr_auto] max-lg:px-4 max-lg:pt-2 max-lg:pb-1.5">
         <Logo
@@ -66,9 +51,6 @@ export function HomeExperience() {
         </nav>
 
         <div className="flex items-center justify-end gap-3 max-lg:col-start-2">
-          {authEnabled && (
-            <NexusAuthTrigger user={user} onOpen={() => setAuthOpen(true)} />
-          )}
           <SocialMedia />
         </div>
       </header>

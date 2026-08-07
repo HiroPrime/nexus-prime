@@ -15,35 +15,35 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next();
-  if (request.cookies.has(VISITOR_COOKIE)) {
-    return response;
-  }
-
-  const visitorId = crypto.randomUUID();
-  response.cookies.set(VISITOR_COOKIE, visitorId, {
-    path: "/",
-    maxAge: ONE_YEAR,
-    sameSite: "lax",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-  });
+  const response = NextResponse.next({ request });
 
   const url = getSupabaseUrl();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (url && key) {
-    void fetch(`${url}/rest/v1/rpc/record_unique_visitor`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        p_site_id: SITE_ID,
-        p_visitor_key: visitorId,
-      }),
-    }).catch(() => {});
+
+  if (!request.cookies.has(VISITOR_COOKIE)) {
+    const visitorId = crypto.randomUUID();
+    response.cookies.set(VISITOR_COOKIE, visitorId, {
+      path: "/",
+      maxAge: ONE_YEAR,
+      sameSite: "lax",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) {
+      void fetch(`${url}/rest/v1/rpc/record_unique_visitor`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_site_id: SITE_ID,
+          p_visitor_key: visitorId,
+        }),
+      }).catch(() => {});
+    }
   }
 
   return response;
